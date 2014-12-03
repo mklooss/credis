@@ -139,8 +139,6 @@ class CredisException extends Exception
  * TODO
  *
  * Pub/Sub
- * @method array         pUnsubscribe(mixed $pattern, string $patternN = NULL))
- * @method array         unsubscribe(mixed $channel, string $channelN = NULL))
  * @method int           publish(string $channel, string $message)
  * @method int|array     pubsub(string $subCommand, $arg = NULL)
  *
@@ -268,6 +266,17 @@ class Credis_Client {
     protected $renamedCommands;
 
     /**
+     * @var int
+     */
+    protected $requests = 0;
+    
+    /**
+     * @var bool
+     */
+    protected $subscribed = false;
+    
+
+    /**
      * Creates a Redisent connection to the Redis server on host {@link $host} and port {@link $port}.
      * $host may also be a path to a unix socket or a string in the form of tcp://[hostname]:[port] or unix://[path]
      *
@@ -296,6 +305,15 @@ class Credis_Client {
             $this->close();
         }
     }
+    
+    /**
+     * @return bool
+     */
+    public function isSubscribed()
+    {
+    	return $this->subscribed;
+    }
+    
     /**
      * Return the host of the Redis instance
      * @return string
@@ -567,8 +585,8 @@ class Credis_Client {
      */
     public function auth($password)
     {
+        $response = $this->__call('auth', array($password));
         $this->authPassword = $password;
-        $response = $this->__call('auth', array($this->authPassword));
         return $response;
     }
 
@@ -578,9 +596,20 @@ class Credis_Client {
      */
     public function select($index)
     {
+        $response = $this->__call('select', array($index));
         $this->selectedDb = (int) $index;
-        $response = $this->__call('select', array($this->selectedDb));
         return $response;
+    }
+    
+    /**
+     * @param string|array $pattern
+     * @return array
+     */
+    public function pUnsubscribe()
+    {
+    	list($command, $channel, $subscribedChannels) = $this->__call('punsubscribe', func_get_args());
+    	$this->subscribed = $subscribedChannels > 0;
+    	return array($command, $channel, $subscribedChannels);
     }
 
     /**
@@ -603,12 +632,13 @@ class Credis_Client {
             } else {
                 list($command, $pattern, $status) = $this->__call('psubscribe', array($patterns));
             }
+            $this->subscribed = $status > 0;
             if ( ! $status) {
                 throw new CredisException('Invalid pSubscribe response.');
             }
         }
         try {
-            while (1) {
+            while ($this->subscribed) {
                 list($type, $pattern, $channel, $message) = $this->read_reply();
                 if ($type != 'pmessage') {
                     throw new CredisException('Received non-pmessage reply.');
@@ -631,6 +661,17 @@ class Credis_Client {
     }
 
     /**
+     * @param string|array $pattern
+     * @return array
+     */
+    public function unsubscribe()
+    {
+    	list($command, $channel, $subscribedChannels) = $this->__call('unsubscribe', func_get_args());
+    	$this->subscribed = $subscribedChannels > 0;
+    	return array($command, $channel, $subscribedChannels);
+    }
+
+    /**
      * @param string|array $channels
      * @param $callback
      * @throws CredisException
@@ -650,12 +691,13 @@ class Credis_Client {
             } else {
                 list($command, $channel, $status) = $this->__call('subscribe', array($channels));
             }
+            $this->subscribed = $status > 0;
             if ( ! $status) {
                 throw new CredisException('Invalid subscribe response.');
             }
         }
         try {
-            while (1) {
+            while ($this->subscribed) {
                 list($type, $channel, $message) = $this->read_reply();
                 if ($type != 'message') {
                     throw new CredisException('Received non-message reply.');
@@ -890,7 +932,19 @@ class Credis_Client {
                     return $this;
                 }
 
-                $response = call_user_func_array(array($this->redis, $name), $args);
+                // Send request, retry one time when using persistent connections on the first request only
+                $this->requests++;
+                try {
+                    $response = call_user_func_array(array($this->redis, $name), $args);
+                } catch (RedisException $e) {
+                    if ($this->persistent && $this->requests == 1 && $e->getMessage() == 'read error on connection') {
+                        $this->connected = FALSE;
+                        $this->connect();
+                        $response = call_user_func_array(array($this->redis, $name), $args);
+                    } else {
+                        throw $e;
+                    }
+                }
             }
             // Wrap exceptions
             catch(RedisException $e) {
