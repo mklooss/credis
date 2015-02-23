@@ -1,4 +1,4 @@
-Client.php                  lib/Credis/Client.php
-Cluster.php                 lib/Credis/Cluster.php
-Sentinel.php                lib/Credis/Sentinel.php
-tests                       lib/Credis/tests
+Client.php                  app/code/community/Credis/Client.php
+Cluster.php                 app/code/community/Credis/Cluster.php
+Sentinel.php                app/code/community/Credis/Sentinel.php
+tests                       app/code/community/Credis/tests
