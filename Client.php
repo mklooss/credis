@@ -140,6 +140,7 @@ class CredisException extends Exception
  * @method int           rPushX(string $key, mixed $value)
  *
  * Sorted Sets:
+ * @method array         zrangebyscore(string $key, mixed $start, mixed $stop, array $args = null)
  * TODO
  *
  * Pub/Sub
@@ -825,6 +826,19 @@ class Credis_Client {
                     }
                     $args = $eArgs;
                     break;
+                case 'zrangebyscore':
+                    if (isset($args[3]) && is_array($args[3])) {
+                        // map options
+                        $cArgs = array();
+                        if (!empty($args[3]['withscores'])) {
+                            $cArgs[] = 'withscores';
+                        }
+                        if (array_key_exists('limit', $args[3])) {
+                            $cArgs[] = array('limit' => $args[3]['limit']);
+                        }
+                        $args[3] = $cArgs;
+                    }
+                    break;
             }
             // Flatten arguments
             $args = self::_flattenArguments($args);
@@ -903,6 +917,23 @@ class Credis_Client {
                         $response = false;
                     }
                     break;
+                case 'zrangebyscore';
+                    if (in_array('withscores', $args, true)) {
+                        // Map array of values into key=>score list like phpRedis does
+                        $item = null;
+                        $out = array();
+                        foreach ($response as $value) {
+                            if ($item == null) {
+                                $item = $value;
+                            } else {
+                                // 2nd value is the score
+                                $out[$item] = (float) $value;
+                                $item = null;
+                            }
+                        }
+                        $response = $out;
+                    }
+                    break;
             }
 
             // Watch mode disables reconnect so error is thrown
@@ -935,6 +966,7 @@ class Credis_Client {
                 case 'hmset':
                 case 'hmget':
                 case 'del':
+                case 'zrangebyscore':
                     break;
                 case 'mget':
                     if(isset($args[0]) && ! is_array($args[0])) {
