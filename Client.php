@@ -65,10 +65,6 @@ class CredisException extends Exception
  * @method array         sort(string $key, string $arg1, string $valueN = null)
  * @method int           ttl(string $key)
  * @method string        type(string $key)
- * @method bool|array    scan(int &$iterator, string $pattern = null, int count = null)
- * @method bool|array    sscan(int &$iterator, string $pattern = null, int count = null)
- * @method bool|array    hscan(int &$iterator, string $pattern = null, int count = null)
- * @method bool|array    zscan(int &$iterator, string $pattern = null, int count = null)
  *
  * Scalars:
  * @method int           append(string $key, string $value)
@@ -357,6 +353,9 @@ class Credis_Client {
      */
     public function forceStandalone()
     {
+        if ($this->standalone) {
+            return $this;
+        }
         if($this->connected) {
             throw new CredisException('Cannot force Credis_Client to use standalone PHP driver after a connection has already been established.');
         }
@@ -456,7 +455,7 @@ class Credis_Client {
             $this->setReadTimeout($this->readTimeout);
         }
 
-        if($this->authPassword !== null) {
+        if($this->authPassword) {
             $this->auth($this->authPassword);
         }
         if($this->selectedDb !== 0) {
@@ -1130,12 +1129,14 @@ class Credis_Client {
         }
 
         $commandLen = strlen($command);
+        $lastFailed = FALSE;
         for ($written = 0; $written < $commandLen; $written += $fwrite) {
             $fwrite = fwrite($this->redis, substr($command, $written));
-            if ($fwrite === FALSE || $fwrite == 0 ) {
+            if ($fwrite === FALSE || ($fwrite == 0 && $lastFailed)) {
                 $this->connected = FALSE;
                 throw new CredisException('Failed to write entire command to stream');
             }
+            $lastFailed = !!$fwrite;
         }
     }
 
