@@ -136,7 +136,12 @@ class CredisException extends Exception
  * @method int           rPushX(string $key, mixed $value)
  *
  * Sorted Sets:
- * @method array         zrangebyscore(string $key, mixed $start, mixed $stop, array $args = null)
+ * @method int           zCard(string $key)
+ * @method array         zRangeByScore(string $key, mixed $start, mixed $stop, array $args = null)
+ * @method array         zRevRangeByScore(string $key, mixed $start, mixed $stop, array $args = null)
+ * @method int           zRemRangeByScore(string $key, mixed $start, mixed $stop)
+ * @method array         zRange(string $key, mixed $start, mixed $stop, array $args = null)
+ * @method array         zRevRange(string $key, mixed $start, mixed $stop, array $args = null)
  * TODO
  *
  * Pub/Sub
@@ -826,13 +831,16 @@ class Credis_Client {
                     $args = $eArgs;
                     break;
                 case 'zrangebyscore':
+                case 'zrevrangebyscore':
+                case 'zrange':
+                case 'zrevrange':
                     if (isset($args[3]) && is_array($args[3])) {
                         // map options
                         $cArgs = array();
                         if (!empty($args[3]['withscores'])) {
                             $cArgs[] = 'withscores';
                         }
-                        if (array_key_exists('limit', $args[3])) {
+                        if (($name == 'zrangebyscore' || $name == 'zrevrangebyscore') && array_key_exists('limit', $args[3])) {
                             $cArgs[] = array('limit' => $args[3]['limit']);
                         }
                         $args[3] = $cArgs;
@@ -916,7 +924,8 @@ class Credis_Client {
                         $response = false;
                     }
                     break;
-                case 'zrangebyscore';
+                case 'zrangebyscore':
+                case 'zrevrangebyscore':
                     if (in_array('withscores', $args, true)) {
                         // Map array of values into key=>score list like phpRedis does
                         $item = null;
@@ -966,6 +975,9 @@ class Credis_Client {
                 case 'hmget':
                 case 'del':
                 case 'zrangebyscore':
+                case 'zrevrangebyscore':
+                case 'zrange':
+                case 'zrevrange':
                     break;
                 case 'mget':
                     if(isset($args[0]) && ! is_array($args[0])) {
@@ -1016,6 +1028,7 @@ class Credis_Client {
                     } else {
                         $this->isMulti = TRUE;
                         $this->redisMulti = call_user_func_array(array($this->redis, $name), $args);
+                        return $this;
                     }
                 }
                 else if($name == 'exec' || $name == 'discard') {
@@ -1136,7 +1149,7 @@ class Credis_Client {
                 $this->connected = FALSE;
                 throw new CredisException('Failed to write entire command to stream');
             }
-            $lastFailed = !!$fwrite;
+            $lastFailed = $fwrite == 0;
         }
     }
 
