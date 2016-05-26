@@ -1,16 +1,23 @@
 {
-    "name":"colinmollenhour/credis",
-    "type":"magento-module",
-    "license":"MIT",
-    "homepage":"https://github.com/colinmollenhour/credis",
-    "description":"Credis is a lightweight interface to the Redis key-value store which wraps the phpredis library when available for better performance.",
-    "authors": [
-        {
-            "name": "Colin Mollenhour",
-            "email": "colin@mollenhour.com"
-        }
-    ],
-    "require":{
-        "magento-hackathon/magento-composer-installer":"*"
-    }
+	"name": "colinmollenhour/credis",
+	"type": "library",
+	"description": "Credis is a lightweight interface to the Redis key-value store which wraps the phpredis library when available for better performance.",
+	"homepage": "https://github.com/colinmollenhour/credis",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Colin Mollenhour",
+			"email": "colin@mollenhour.com"
+		}
+	],
+	"require": {
+		"php": ">=5.4.0"
+	},
+	"autoload": {
+		"classmap": [
+			"Client.php",
+			"Cluster.php",
+            "Sentinel.php"
+		]
+	}
 }
