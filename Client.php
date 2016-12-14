@@ -50,8 +50,10 @@ class CredisException extends Exception
  * @method array         exec()
  * @method string        flushAll()
  * @method string        flushDb()
- * @method array         info()
+ * @method array         info(string $section)
  * @method bool|array    config(string $setGet, string $key, string $value = null)
+ * @method array         role()
+ * @method array         time()
  *
  * Keys:
  * @method int           del(string $key)
@@ -423,10 +425,8 @@ class Credis_Client {
             $remote_socket = $this->port === NULL
                 ? 'unix://'.$this->host
                 : 'tcp://'.$this->host.':'.$this->port;
-            if ($this->persistent) {
-                if ($this->port === NULL) { // Unix socket
-                    throw new CredisException('Persistent connections to UNIX sockets are not supported in standalone mode.');
-                }
+            if ($this->persistent && $this->port !== NULL) {
+                // Persistent connections to UNIX sockets are not supported
                 $remote_socket .= '/'.$this->persistent;
                 $flags = $flags | STREAM_CLIENT_PERSISTENT;
             }
@@ -449,7 +449,7 @@ class Credis_Client {
             }
             $failures = $this->connectFailures;
             $this->connectFailures = 0;
-            throw new CredisException("Connection to Redis failed after $failures failures." . (isset($errno) && isset($errstr) ? "Last Error : ({$errno}) {$errstr}" : ""));
+            throw new CredisException("Connection to Redis {$this->host}:{$this->port} failed after $failures failures." . (isset($errno) && isset($errstr) ? "Last Error : ({$errno}) {$errstr}" : ""));
         }
 
         $this->connectFailures = 0;
