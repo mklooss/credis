@@ -436,9 +436,10 @@ class Credis_Client {
             if ( ! $this->redis) {
                 $this->redis = new Redis;
             }
+            $socketTimeout = $this->timeout ? $this->timeout : 0.0;
             $result = $this->persistent
-                ? $this->redis->pconnect($this->host, $this->port, $this->timeout, $this->persistent)
-                : $this->redis->connect($this->host, $this->port, $this->timeout);
+                ? $this->redis->pconnect($this->host, $this->port, $socketTimeout, $this->persistent)
+                : $this->redis->connect($this->host, $this->port, $socketTimeout);
         }
 
         // Use recursion for connection retries
@@ -793,6 +794,19 @@ class Credis_Client {
                     $eArgs = (array) array_shift($args);
                     $args = array($script, count($keys), $keys, $eArgs);
                     break;
+                case 'zunionstore':
+                    $dest = array_shift($args);
+                    $keys = (array) array_shift($args);
+                    $weights = array_shift($args);
+                    $aggregate = array_shift($args);
+                    $args = array($dest, count($keys), $keys);
+                    if ($weights) {
+                        $args[] = (array) $weights;
+                    }
+                    if ($aggregate) {
+                        $args[] = $aggregate;
+                    }
+                    break;
                 case 'set':
                     // The php redis module has different behaviour with ttl
                     // https://github.com/phpredis/phpredis#set
@@ -847,7 +861,7 @@ class Credis_Client {
 					if (!empty($args[3]))
 					{
 						$eArgs[] = 'COUNT';
-						$eArgs[] = $args[4];
+						$eArgs[] = $args[3];
 					}
 					$args = $eArgs;
 					break;
@@ -1014,6 +1028,20 @@ class Credis_Client {
                 case 'zrevrangebyscore':
                 case 'zrange':
                 case 'zrevrange':
+                   break;
+                case 'zunionstore':
+                    $cArgs = array();
+                    $cArgs[] = array_shift($args); // destination
+                    $cArgs[] = array_shift($args); // keys
+                    if(isset($args[0]) and isset($args[0]['weights'])) {
+                        $cArgs[] = (array) $args[0]['weights'];
+                    } else {
+                        $cArgs[] = null;
+                    }
+                    if(isset($args[0]) and isset($args[0]['aggregate'])) {
+                        $cArgs[] = strtoupper($args[0]['aggregate']);
+                    }
+                    $args = $cArgs;
                     break;
                 case 'mget':
                     if(isset($args[0]) && ! is_array($args[0])) {
