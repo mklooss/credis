@@ -81,7 +81,7 @@ class CredisException extends Exception
  * @method array         mGet(array $keys)
  * @method bool          mSet(array $keysValues)
  * @method int           mSetNx(array $keysValues)
- * @method bool          set(string $key, string $value)
+ * @method bool          set(string $key, string $value, [int|array $options = null])
  * @method int           setBit(string $key, int $offset, int $value)
  * @method bool          setEx(string $key, int $seconds, string $value)
  * @method int           setNx(string $key, string $value)
@@ -436,10 +436,20 @@ class Credis_Client {
             if ( ! $this->redis) {
                 $this->redis = new Redis;
             }
-            $socketTimeout = $this->timeout ? $this->timeout : 0.0;
-            $result = $this->persistent
-                ? $this->redis->pconnect($this->host, $this->port, $socketTimeout, $this->persistent)
-                : $this->redis->connect($this->host, $this->port, $socketTimeout);
+            try
+            {
+                $socketTimeout = $this->timeout ? $this->timeout : 0.0;
+                $result = $this->persistent
+                    ? $this->redis->pconnect($this->host, $this->port, $socketTimeout, $this->persistent)
+                    : $this->redis->connect($this->host, $this->port, $socketTimeout);
+            }
+            catch(Exception $e)
+            {
+                // Some applications will capture the php error that phpredis can sometimes generate and throw it as an Exception
+                $result = false;
+                $errno = 1;
+                $errstr = $e->getMessage();
+            }
         }
 
         // Use recursion for connection retries
@@ -625,8 +635,8 @@ class Credis_Client {
     /**
      * @param int $Iterator
      * @param string $pattern
-     * @param int $Iterator
-     * @return bool | Array
+     * @param int $count
+     * @return bool|array
      */    
     public function scan(&$Iterator, $pattern = null, $count = null)
     {
@@ -638,7 +648,7 @@ class Credis_Client {
 	 * @param string $field
 	 * @param string $pattern
 	 * @param int $count
-	 * @return bool | Array
+	 * @return bool|array
 	 */
 	public function hscan(&$Iterator, $field, $pattern = null, $count = null)
 	{
@@ -650,7 +660,7 @@ class Credis_Client {
      * @param string $field
      * @param string $pattern
      * @param int $Iterator
-     * @return bool | Array
+     * @return bool|array
      */    
     public function sscan(&$Iterator, $field, $pattern = null, $count = null)
     {
@@ -662,7 +672,7 @@ class Credis_Client {
      * @param string $field
      * @param string $pattern
      * @param int $Iterator
-     * @return bool | Array
+     * @return bool|array
      */    
     public function zscan(&$Iterator, $field, $pattern = null, $count = null)
     {
@@ -774,6 +784,7 @@ class Credis_Client {
             }
             throw $e;
         }
+        return null;
     }
 
     public function __call($name, $args)
@@ -887,6 +898,17 @@ class Credis_Client {
                         $args = array_values($args[0]);
                     }
                     break;
+                case 'hmset':
+                    if (isset($args[1]) && is_array($args[1]))
+                    {
+                        $cArgs = array();
+                        foreach($args[1] as $id => $value)
+                        {
+                            $cArgs[] = $id;
+                            $cArgs[] = $value;
+                        }
+                        $args[1] = $cArgs;
+                    }
             }
             // Flatten arguments
             $args = self::_flattenArguments($args);
