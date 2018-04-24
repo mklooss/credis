@@ -622,7 +622,7 @@ class CredisTest extends CredisTestCommon
           $this->credis->forceStandalone();
       }
       $this->credis->setMaxConnectRetries(1);
-      $this->expectException('CredisException','Connection to Redis localhost:12345 failed after 2 failures.');
+      $this->setExpectedExceptionShim('CredisException','Connection to Redis localhost:12345 failed after 2 failures.');
       $this->credis->connect();
   }
 
@@ -664,7 +664,7 @@ class CredisTest extends CredisTestCommon
   public function testInvalidTcpConnectionstring()
   {
       $this->credis->close();
-      $this->expectException('CredisException','Invalid host format; expected tcp://host[:port][/persistence_identifier]');
+      $this->setExpectedExceptionShim('CredisException','Invalid host format; expected tcp://host[:port][/persistence_identifier]');
       $this->credis = new Credis_Client('tcp://'.$this->redisConfig[0]['host'] . ':abc');
       if ($this->useStandalone) {
           $this->credis->forceStandalone();
@@ -674,7 +674,7 @@ class CredisTest extends CredisTestCommon
   public function testInvalidUnixSocketConnectionstring()
   {
       $this->credis->close();
-      $this->expectException('CredisException','Invalid unix socket format; expected unix:///path/to/redis.sock');
+      $this->setExpectedExceptionShim('CredisException','Invalid unix socket format; expected unix:///path/to/redis.sock');
       $this->credis = new Credis_Client('unix://path/to/redis.sock');
       if ($this->useStandalone) {
           $this->credis->forceStandalone();
@@ -685,7 +685,7 @@ class CredisTest extends CredisTestCommon
   {
       $this->credis->connect();
       if ( ! $this->useStandalone) {
-          $this->expectException('CredisException','Cannot force Credis_Client to use standalone PHP driver after a connection has already been established.');
+          $this->setExpectedExceptionShim('CredisException','Cannot force Credis_Client to use standalone PHP driver after a connection has already been established.');
       }
       $this->credis->forceStandalone();
       $this->assertTrue(true);
@@ -718,11 +718,30 @@ class CredisTest extends CredisTestCommon
     }
     public function testscan()
     {
-        $this->credis->set('name','Jack');
-        $this->credis->set('age','33');
+        $seen = array();
+        for($i = 0; $i < 100; $i++)
+        {
+            $this->credis->set('name.' . $i, 'Jack');
+            $this->credis->set('age.' . $i, '33');
+        }
         $iterator = null;
-        $result = $this->credis->scan($iterator,'n*',10);
-        $this->assertEquals($iterator,0);
-        $this->assertEquals($result,['name']);
+        do
+        {
+            $result = $this->credis->scan($iterator, 'n*', 10);
+            if ($result === false)
+            {
+                $this->assertEquals($iterator, 0);
+                break;
+            }
+            else
+            {
+                foreach($result as $key)
+                {
+                    $seen[$key] = true;
+                }
+            }
+        }
+        while($iterator);
+        $this->assertEquals(count($seen), 100);
     }
 }
