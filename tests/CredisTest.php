@@ -90,10 +90,14 @@ class CredisTest extends CredisTestCommon
         $this->assertTrue(in_array('FOO', $mGet));
         $this->assertTrue(in_array('BAR', $mGet));
 
-        // Delete strings, null response
+        // Delete strings and check they are deleted
         $this->assertEquals(2, $this->credis->del('foo', 'bar'));
         $this->assertFalse($this->credis->get('foo'));
         $this->assertFalse($this->credis->get('bar'));
+
+        // Unlink strings using array args
+        $this->assertTrue($this->credis->mSet(['foo' => 'FOO', 'bar' => 'BAR']));
+        $this->assertEquals(2, $this->credis->unlink(['foo', 'bar']));
 
         // Long string
         $longString = str_repeat(md5('asd'), 4096); // 128k (redis.h REDIS_INLINE_MAX_SIZE = 64k)

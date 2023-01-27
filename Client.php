@@ -56,7 +56,7 @@ class CredisException extends Exception
  * @method int|Credis_Client           dbsize()
  *
  * Keys:
- * @method int|Credis_Client           del(string|array $key)
+ * @method int|Credis_Client           del(string|array ...$keys)
  * @method int|Credis_Client           exists(string $key)
  * @method int|Credis_Client           expire(string $key, int $seconds)
  * @method int|Credis_Client           expireAt(string $key, int $timestamp)
@@ -67,6 +67,7 @@ class CredisException extends Exception
  * @method array|Credis_Client         sort(string $key, string $arg1, string $valueN = null)
  * @method int|Credis_Client           ttl(string $key)
  * @method string|Credis_Client        type(string $key)
+ * @method string|Credis_Client        unlink(string|array ...$keys)
  *
  * Scalars:
  * @method int|Credis_Client           append(string $key, string $value)
@@ -1153,7 +1154,6 @@ class Credis_Client
                 case 'msetnx':
                 case 'hmset':
                 case 'hmget':
-                case 'del':
                 case 'zrangebyscore':
                 case 'zrevrangebyscore':
                     break;
