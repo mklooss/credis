@@ -320,6 +320,14 @@ class CredisTest extends CredisTestCommon
         $this->credis->pipeline();
         $this->pipelineTestInternal();
         $this->assertEquals(array(), $this->credis->pipeline()->exec());
+
+        try {
+            $iterator = null;
+            $reply = $this->credis->pipeline()->scan($iterator, '*')->exec();
+            $this->assertFalse($reply);
+        } catch (CredisException $e) {
+            $this->assertStringStartsWith('multi()/pipeline() mode can not be used with', $e->getMessage());
+        }
     }
 
     public function testPipelineMulti()
@@ -330,6 +338,14 @@ class CredisTest extends CredisTestCommon
         $this->credis->pipeline()->multi();
         $this->pipelineTestInternal();
         $this->assertEquals(array(), $this->credis->pipeline()->multi()->exec());
+
+        try {
+            $iterator = null;
+            $reply = $this->credis->pipeline()->multi()->scan($iterator, '*')->exec();
+            $this->assertFalse($reply);
+        } catch (CredisException $e) {
+            $this->assertStringStartsWith('multi()/pipeline() mode can not be used with', $e->getMessage());
+        }
     }
 
     public function testWatchMultiUnwatch()
@@ -357,6 +373,7 @@ class CredisTest extends CredisTestCommon
         $reply = $this->credis
             ->set('a', 123)
             ->get('a')
+            ->mGet([]) // will be dropped from return result by phpredis
             ->sAdd('b', 123)
             ->sMembers('b')
             ->set('empty', '')
@@ -384,6 +401,7 @@ class CredisTest extends CredisTestCommon
             array(
                 true,               // set('a', 123)
                 '123',              // get('a')
+                //[],                 // get([]) - phpredis doesn't return this
                 1,                  // sAdd('b', 123)
                 array(123),         // sMembers('b')
                 true,               // set('empty', '')
@@ -444,30 +462,65 @@ class CredisTest extends CredisTestCommon
     public function testTransaction()
     {
         $reply = $this->credis->multi()
-                ->incr('foo')
-                ->incr('bar')
-                ->exec();
+                              ->incr('foo')
+                              ->incr('bar')
+                              ->exec();
         $this->assertEquals(array(1,1), $reply);
 
         $reply = $this->credis->pipeline()->multi()
-                ->incr('foo')
-                ->incr('bar')
-                ->exec();
+                              ->incr('foo')
+                              ->incr('bar')
+                              ->exec();
         $this->assertEquals(array(2,2), $reply);
 
-        $reply = $this->credis->multi()->pipeline()
-                ->incr('foo')
-                ->incr('bar')
-                ->exec();
-        $this->assertEquals(array(3,3), $reply);
+        $reply = $this->credis->pipeline()
+                              ->incr('foo')
+                              ->multi()
+                              ->incr('foo')
+                              ->incr('bar')
+                              ->exec();
+        $this->assertEquals(array(3,4,3), $reply);
 
         $reply = $this->credis->multi()
-                ->set('a', 3)
-                ->lpop('a')
-                ->exec();
+                              ->incr('foo')
+                              ->pipeline()
+                              ->incr('foo')
+                              ->incr('bar')
+                              ->exec();
+        $this->assertEquals(array(5,6,4), $reply);
+
+        $reply = $this->credis->multi()->pipeline()
+                              ->incr('foo')
+                              ->incr('bar')
+                              ->exec();
+        $this->assertEquals(array(7,5), $reply);
+
+        $reply = $this->credis->multi()
+                              ->incr('foo')
+                              ->pipeline()
+                              ->incr('foo')
+                              ->incr('bar')
+                              ->exec();
+        $this->assertEquals(array(8,9,6), $reply);
+
+        $reply = $this->credis->multi()
+                              ->set('a', 3)
+                              ->lpop('a') // bad operation for "a"'s type
+                              ->exec();
         $this->assertEquals(2, count($reply));
         $this->assertEquals(true, $reply[0]);
         $this->assertFalse($reply[1]);
+
+        $reply = $this->credis->multi()->pipeline()
+                              ->set('a', 3)
+                              ->lpop('a') // bad operation for "a"'s type
+                              ->exec();
+        $this->assertEquals(2, count($reply));
+        $this->assertEquals(true, $reply[0]);
+        $this->assertFalse($reply[1]);
+
+        $this->assertEquals(array(), $this->credis->multi()->multi()->exec());
+        $this->assertEquals(array(), $this->credis->pipeline()->multi()->multi()->exec());
     }
 
     public function testServer()
@@ -821,6 +874,16 @@ class CredisTest extends CredisTestCommon
       $this->assertEquals($iterator, 0);
       $this->assertEquals($result, ['name'=>'Jack']);
   }
+
+    public function testHscanEmptyIterator()
+    {
+        $this->credis->hmset('set', ['foo' => 'bar']);
+        $iterator = 0;
+        $result = $this->credis->zscan($iterator, 'hash', '*', 10);
+        $this->assertEquals($iterator, 0);
+        $this->assertEquals($result, false);
+    }
+
     public function testSscan()
     {
         $this->credis->sadd('set', 'name', 'Jack');
@@ -830,6 +893,16 @@ class CredisTest extends CredisTestCommon
         $this->assertEquals($iterator, 0);
         $this->assertEquals($result, [0=>'name']);
     }
+
+    public function testSscanEmptyIterator()
+    {
+        $this->credis->sadd('set', 'foo', 'bar');
+        $iterator = 0;
+        $result = $this->credis->zscan($iterator, 'set', '*', 10);
+        $this->assertEquals($iterator, 0);
+        $this->assertEquals($result, false);
+    }
+
     public function testZscan()
     {
         $this->credis->zadd('sortedset', 0, 'name');
@@ -839,6 +912,16 @@ class CredisTest extends CredisTestCommon
         $this->assertEquals($iterator, 0);
         $this->assertEquals($result, ['name'=>'0']);
     }
+
+    public function testZscanEmptyIterator()
+    {
+        $this->credis->zadd('sortedset', 0, 'name');
+        $iterator = 0;
+        $result = $this->credis->zscan($iterator, 'sortedset', '*', 10);
+        $this->assertEquals($iterator, 0);
+        $this->assertEquals($result, false);
+    }
+
     public function testscan()
     {
         $seen = array();
@@ -859,6 +942,15 @@ class CredisTest extends CredisTestCommon
             }
         } while ($iterator);
         $this->assertEquals(count($seen), 100);
+    }
+
+    public function testscanEmptyIterator()
+    {
+        $this->credis->set('foo', 'bar');
+        $iterator = 0;
+        $result = $this->credis->scan($iterator, '*', 10);
+        $this->assertEquals($iterator, 0);
+        $this->assertEquals($result, false);
     }
 
   public function testPing()
