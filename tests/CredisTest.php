@@ -868,11 +868,11 @@ class CredisTest extends CredisTestCommon
     }
     public function testHscan()
     {
-        $this->credis->hmset('hash', array('name' => 'Jack','age' =>33));
+        $this->credis->hmset('hash', array('name' => 'Jack','age' => 33));
         $iterator = null;
         $result = $this->credis->hscan($iterator, 'hash', 'n*', 10);
         $this->assertEquals($iterator, 0);
-        $this->assertEquals($result, ['name'=>'Jack']);
+        $this->assertEquals($result, ['name' => 'Jack']);
     }
 
     public function testHscanEmptyIterator()
@@ -891,7 +891,7 @@ class CredisTest extends CredisTestCommon
         $iterator = null;
         $result = $this->credis->sscan($iterator, 'set', 'n*', 10);
         $this->assertEquals($iterator, 0);
-        $this->assertEquals($result, [0=>'name']);
+        $this->assertEquals($result, [0 => 'name']);
     }
 
     public function testSscanEmptyIterator()
@@ -910,7 +910,7 @@ class CredisTest extends CredisTestCommon
         $iterator = null;
         $result = $this->credis->zscan($iterator, 'sortedset', 'n*', 10);
         $this->assertEquals($iterator, 0);
-        $this->assertEquals($result, ['name'=>'0']);
+        $this->assertEquals($result, ['name' => '0']);
     }
 
     public function testZscanEmptyIterator()
