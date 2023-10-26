@@ -1391,7 +1391,6 @@ class Credis_Client
                         $response = $typeMap[$response];
                         break;
 
-                    // Handle scripting errors
                     case 'eval':
                     case 'evalsha':
                     case 'script':
@@ -1420,7 +1419,7 @@ class Credis_Client
                         if (is_bool($response) && $response === true) {
                             $this->redis->clearLastError();
                         }
-                    // no break
+                        // no break
                     default:
                         $error = $this->redis->getLastError();
                         $this->redis->clearLastError();

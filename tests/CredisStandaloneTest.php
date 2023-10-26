@@ -15,20 +15,20 @@ class CredisStandaloneTest extends CredisTest
         $this->assertEquals('value', $this->credis->get('key'));
     }
 
-      public function testPersistentvsNonPersistent()
-      {
-          $this->assertTrue(true);
-      }
+    public function testPersistentvsNonPersistent()
+    {
+        $this->assertTrue(true);
+    }
 
-      public function testStandAloneArgumentsExtra()
-      {
-          $this->assertTrue($this->credis->hMSet('hash', array('field1' => 'value1', 'field2' => 'value2'), 'field3', 'value3'));
-          $this->assertEquals(array('field1' => 'value1', 'field2' => 'value2', 'field3' =>'value3'), $this->credis->hMGet('hash', array('field1','field2','field3')));
-      }
+    public function testStandAloneArgumentsExtra()
+    {
+        $this->assertTrue($this->credis->hMSet('hash', array('field1' => 'value1', 'field2' => 'value2'), 'field3', 'value3'));
+        $this->assertEquals(array('field1' => 'value1', 'field2' => 'value2', 'field3' =>'value3'), $this->credis->hMGet('hash', array('field1','field2','field3')));
+    }
 
-      public function testStandAloneMultiPipelineThrowsException()
-      {
-          $this->setExpectedExceptionShim('CredisException', 'A pipeline is already in use and only one pipeline is supported.');
-          $this->credis->pipeline()->pipeline();
-      }
+    public function testStandAloneMultiPipelineThrowsException()
+    {
+        $this->setExpectedExceptionShim('CredisException', 'A pipeline is already in use and only one pipeline is supported.');
+        $this->credis->pipeline()->pipeline();
+    }
 }
