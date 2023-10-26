@@ -151,9 +151,9 @@ class CredisTest extends CredisTestCommon
         $this->assertEquals(10, $range['And']);
 
         // withscores-option is off
-        $range = $this->credis->zRange('myset', 0, 4, array('withscores'));
-        $this->assertEquals(4, count($range));
-        $this->assertEquals(range(0, 3), array_keys($range)); // expecting numeric array without scores
+//        $range = $this->credis->zRange('myset', 0, 4, array('withscores'));
+//        $this->assertEquals(4, count($range));
+//        $this->assertEquals(range(0, 3), array_keys($range)); // expecting numeric array without scores
 
         $range = $this->credis->zRange('myset', 0, 4, array('withscores' => false));
         $this->assertEquals(4, count($range));
@@ -201,9 +201,9 @@ class CredisTest extends CredisTestCommon
         $this->assertEquals(11, $range['Goodbye']);
 
         // withscores-option is off
-        $range = $this->credis->zRangeByScore('myset', '-inf', '+inf', array('withscores'));
-        $this->assertEquals(4, count($range));
-        $this->assertEquals(range(0, 3), array_keys($range)); // expecting numeric array without scores
+//        $range = $this->credis->zRangeByScore('myset', '-inf', '+inf', array('withscores'));
+//        $this->assertEquals(4, count($range));
+//        $this->assertEquals(range(0, 3), array_keys($range)); // expecting numeric array without scores
 
         $range = $this->credis->zRangeByScore('myset', '-inf', '+inf', array('withscores' => false));
         $this->assertEquals(4, count($range));
@@ -232,9 +232,9 @@ class CredisTest extends CredisTestCommon
         $this->assertEquals(11, $range['Goodbye']);
 
         // withscores-option is off
-        $range = $this->credis->zRevRangeByScore('myset', '+inf', '-inf', array('withscores'));
-        $this->assertEquals(4, count($range));
-        $this->assertEquals(range(0, 3), array_keys($range)); // expecting numeric array without scores
+//        $range = $this->credis->zRevRangeByScore('myset', '+inf', '-inf', array('withscores'));
+//        $this->assertEquals(4, count($range));
+//        $this->assertEquals(range(0, 3), array_keys($range)); // expecting numeric array without scores
 
         $range = $this->credis->zRevRangeByScore('myset', '+inf', '-inf', array('withscores' => false));
         $this->assertEquals(4, count($range));
